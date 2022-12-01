@@ -228,12 +228,14 @@ function update() {
     var scaling = document.querySelector('#scaling').checked;
     var rotation = document.querySelector('#rotation').checked;
     var uniform  = document.querySelector('#uniform').checked;
+    var angle  = document.querySelector('#angle').checked;
 
     layers.forEach(function(layer) {
       layer.transform.setOptions({
         scaling: scaling,
         rotation: rotation,
-        uniformScaling: uniform
+        uniformScaling: uniform,
+        showRotationAngle: angle,
       }).enable();
     });
   });
