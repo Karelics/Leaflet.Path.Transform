@@ -8,6 +8,8 @@ Based on [L.Path.Transform](https://github.com/w8r/Leaflet.Path.Transform) with 
 
 [L.Path.Drag](https://github.com/w8r/Leaflet.Path.Drag) excluded from the package. Include it manually in case it is needed.
 
+With L.Canvas renderer support.
+
 ### Requirements
 
 Leaflet 1.0+
