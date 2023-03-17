@@ -175,6 +175,9 @@ L.Handler.PathTransform = L.Handler.extend({
     if (L.Browser.mobile && L.Browser.touch) {
       this.options.handlerOptions.radius = 8;
     }
+
+    // utility variables
+    this._restoreDragging = false;
   },
 
   /**
@@ -306,24 +309,35 @@ L.Handler.PathTransform = L.Handler.extend({
     return this;
   },
 
+  _eachHandler: function(fn) {
+    for (var i = 0, len = this._handlers.length; i < len; i++) {
+      var handler = this._handlers[i];
+      fn.call(this, handler);
+    }
+  },
+
   /**
    * Update the polygon and handlers preview, no reprojection
    */
-  _update: function () {
+  _update: function (updateRotation) {
     var matrix = this._matrix;
 
-    // update handlers
-    for (var i = 0, len = this._handlers.length; i < len; i++) {
-      var handler = this._handlers[i];
-      if (handler !== this._originMarker) {
+    this._eachHandler(function(handler) {
+      // we should remove layers from Canvas (because canvas is copied on transform)
+      if (handler !== this._originMarker && handler._map && handler._map.getRenderer(handler) instanceof L.Canvas) {
+        this._map.removeLayer(handler);
+      }
+    });
+
+    this._applyTransform(matrix.clone().flip());
+
+    this._eachHandler(function(handler) {
+      if (handler !== this._originMarker && (updateRotation || handler !== this._rotationMarker)) {
         handler._point = matrix.transform(handler._initialPoint);
         handler._updatePath();
       }
-    }
+    });
 
-    matrix = matrix.clone().flip();
-
-    this._applyTransform(matrix);
     this._path.fire('transform', { layer: this._path });
   },
 
@@ -366,6 +380,8 @@ L.Handler.PathTransform = L.Handler.extend({
     this._updateHandlers();
 
     map.dragging.enable();
+    if (this._restoreDragging && this._path.dragging) { this._path.dragging.enable(); }
+
     this._path.fire('transformed', {
       matrix: matrix,
       scale: scale,
@@ -544,11 +560,10 @@ L.Handler.PathTransform = L.Handler.extend({
   _createHandlers: function () {
     var map = this._map;
     this._handlersGroup = this._handlersGroup || new L.LayerGroup().addTo(map);
-    this._rect =
-      this._rect || this._getBoundingPolygon().addTo(this._handlersGroup);
+    this._rect = this._rect || this._getBoundingPolygon().addTo(this._handlersGroup);
 
+    this._handlers = [];
     if (this.options.scaling) {
-      this._handlers = [];
       for (var i = 0; i < this.options.edgesCount; i++) {
         // TODO: add stretching
         this._handlers.push(
@@ -559,6 +574,9 @@ L.Handler.PathTransform = L.Handler.extend({
       }
     }
 
+    // path should be on top of bounds rectangle
+    this._path.bringToFront();
+
     // add bounds
     if (this.options.rotation) {
       //add rotation handler
@@ -567,7 +585,7 @@ L.Handler.PathTransform = L.Handler.extend({
 
     // move handlers to the top of all other layers; prevents handlers from
     // being blocked by other layers
-    this._handlersGroup.getLayers().forEach(function(layer) { layer.bringToFront(); });
+    this._handlers.forEach(function(layer) { layer.bringToFront(); });
   },
 
   /**
@@ -701,7 +719,7 @@ L.Handler.PathTransform = L.Handler.extend({
       this._rotationAngleTooltip.innerText = this.options.rotationAngleTooltipFormatter(normalizedAngle);
     }
 
-    this._update();
+    this._update(true);
     this._path.fire('rotate', { layer: this._path, rotation: this._angle });
   },
 
@@ -732,6 +750,9 @@ L.Handler.PathTransform = L.Handler.extend({
 
     map.dragging.disable();
 
+    this._restoreDragging = this._path.dragging && this._path.dragging.enabled();
+    if (this._restoreDragging) { this._path.dragging.disable(); }
+
     this._activeMarker = marker;
 
     this._originMarker = this._handlers[(marker.options.index + 2) % 4];
@@ -761,8 +782,6 @@ L.Handler.PathTransform = L.Handler.extend({
     if (this._rotationMarker) {
       this._map.removeLayer(this._rotationMarker);
     }
-
-    //this._handleLine = this._rotationMarker = null;
   },
 
   /**
@@ -800,10 +819,10 @@ L.Handler.PathTransform = L.Handler.extend({
       .off('mousemove', this._onScale, this)
       .off('mouseup', this._onScaleEnd, this);
 
-    if (this._handleLine) {
+    if (this.options.rotation && this._handleLine) {
       this._map.addLayer(this._handleLine);
     }
-    if (this._rotationMarker) {
+    if (this.options.rotation && this._rotationMarker) {
       this._map.addLayer(this._rotationMarker);
     }
 
