@@ -636,6 +636,8 @@ L.Handler.PathTransform = L.Handler.extend({
   _createRotationAngleTooltip: function() {
     var centerLatLng = this._rect.getBounds().getCenter();
     var centerPoint = this._map.latLngToLayerPoint(centerLatLng);
+    // 'leaflet-rotate' library support
+    centerPoint = (this._map.rotatedPointToMapPanePoint && this._map.rotatedPointToMapPanePoint(centerPoint)) || centerPoint;
 
     var tooltip = L.DomUtil.create('div', this.options.rotationAngleTooltipClass, this._map._panes.popupPane);
 
