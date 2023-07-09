@@ -866,6 +866,27 @@ L.Handler.PathTransform = L.Handler.extend({
         this.options.boundsOptions
       );
     } else {
+      if (this._path._map && this._path._map._rotate) {
+        var latLngs = this._path.getLatLngs()[0];
+        var minX, maxX, minY, maxY;
+        for (var i = 0; i < latLngs.length; i++) {
+          var point = this._path._map.latLngToContainerPoint(latLngs[i]);
+          if (i === 0 || point.x < minX) { minX = point.x; }
+          if (i === 0 || point.x > maxX) { maxX = point.x; }
+          if (i === 0 || point.y < minY) { minY = point.y; }
+          if (i === 0 || point.y > maxY) { maxY = point.y; }
+        }
+        return new L.Polygon(
+          [
+            this._path._map.containerPointToLatLng(new L.Point(minX, maxY)),
+            this._path._map.containerPointToLatLng(new L.Point(minX, minY)),
+            this._path._map.containerPointToLatLng(new L.Point(maxX, minY)),
+            this._path._map.containerPointToLatLng(new L.Point(maxX, maxY)),
+          ],
+          this.options.boundsOptions
+        );
+      }
+
       return new L.Rectangle(
         this._path.getBounds(),
         this.options.boundsOptions
